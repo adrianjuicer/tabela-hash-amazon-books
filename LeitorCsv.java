@@ -94,9 +94,7 @@ public class LeitorCsv {
                 resultado = leuAlgo;
             } else {
                 leuAlgo = 1;
-                if (caractere == ',') {
-                    campo++;
-                } else if (dentroAspas == 1) {
+                if (dentroAspas == 1) {
                     if (caractere == '"') {
                         if (espiarCaractere() == '"') {
                             proximoCaractere();        // "" dentro de aspas vira uma aspa
@@ -105,11 +103,13 @@ public class LeitorCsv {
                             dentroAspas = 0;           // fechou as aspas
                         }
                     } else {
-                        guardar(campo, (char) caractere);
+                        guardar(campo, (char) caractere); // vírgula e quebra de linha aqui são texto
                     }
                 } else {
                     if (caractere == '"') {
                         dentroAspas = 1;
+                    } else if (caractere == ',') {
+                        campo++;
                     } else if (caractere == '\n') {
                         resultado = 1;                 // fim da linha fora das aspas: fim do registro
                     } else if (caractere != '\r') {

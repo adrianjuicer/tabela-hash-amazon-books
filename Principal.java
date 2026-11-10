@@ -5,7 +5,7 @@ import java.io.IOException;
 public class Principal {
 
     public static void main(String[] args) throws IOException {
-        // Etapa 1: leitura (por enquanto só conta as avaliações válidas e as descartadas)
+        // Etapa 1: leitura e indexação
         BaseAvaliacoes base = new BaseAvaliacoes();
         base.carregar("Books_rating.csv");
         mostrarLeitura(base);
@@ -21,5 +21,7 @@ public class Principal {
         System.out.println("Descartados sem Title:    " + base.descartadosSemTitulo);
         System.out.println("Descartados nota invalida: " + base.descartadosNotaInvalida);
         System.out.println("Total descartado:         " + descartados);
+        System.out.println("Usuarios distintos:       " + base.tabelaUsuarios.quantidade);
+        System.out.println("Livros distintos:         " + base.tabelaTitulos.quantidade);
     }
 }
