@@ -29,6 +29,8 @@ Arquivos gerados:
 | Arquivo | Conteúdo |
 |---|---|
 | `usuario_melhor_livro.csv` | um usuário por linha: `User_id, profileName, Title, media_livro, N_livro, nota_usuario` |
+| `usuario_melhor_livro_ordenado.csv` | a mesma lista em ordem decrescente de `media_livro` (desempate: maior `N_livro`, depois `User_id`) |
+| `ranking_top10_livros.csv` | os 10 livros de maior média com pelo menos 100 avaliações |
 
-Na tela aparecem o resumo da leitura (linhas válidas e descartadas) e as consultas do
-`user_id.txt`.
+Na tela aparecem o resumo da leitura (linhas válidas e descartadas), o ranking, as consultas do
+`user_id.txt` e o tempo de cada etapa.

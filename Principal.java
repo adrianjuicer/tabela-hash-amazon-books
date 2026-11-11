@@ -9,18 +9,48 @@ public class Principal {
 
     public static void main(String[] args) throws IOException {
         // Etapa 1: leitura e indexação
+        double inicio = System.nanoTime();
         BaseAvaliacoes base = new BaseAvaliacoes();
         base.carregar("Books_rating.csv");
+        double tempoLeitura = (System.nanoTime() - inicio) / 1000000.0;
         mostrarLeitura(base);
 
         // Etapa 2: melhor livro de cada usuário
+        inicio = System.nanoTime();
         base.calcularMelhoresLivros();
+        double tempoMelhorLivro = (System.nanoTime() - inicio) / 1000000.0;
 
-        // Etapa 3: gravação do arquivo
-        gravarUsuarios(base, "usuario_melhor_livro.csv");
+        // Etapa 3: ordenação da lista de usuários (quicksort) e ranking dos livros
+        inicio = System.nanoTime();
+        int quantidadeUsuarios = base.tabelaUsuarios.quantidade;
+        int[] ordem = new int[quantidadeUsuarios];
+        for (int i = 0; i < quantidadeUsuarios; i++) {
+            ordem[i] = i;
+        }
+        Ordenacao.quicksort(ordem, 0, quantidadeUsuarios - 1, base);
+        int[] ranking = calcularRanking(base);
+        double tempoOrdenacao = (System.nanoTime() - inicio) / 1000000.0;
 
-        // Etapa 4: consultas pontuais do arquivo user_id.txt
+        // Etapa 4: gravação dos arquivos
+        inicio = System.nanoTime();
+        gravarUsuarios(base, null, "usuario_melhor_livro.csv");
+        gravarUsuarios(base, ordem, "usuario_melhor_livro_ordenado.csv");
+        gravarRanking(base, ranking);
+        double tempoGravacao = (System.nanoTime() - inicio) / 1000000.0;
+        mostrarRanking(base, ranking);
+
+        // Etapa 5: consultas pontuais do arquivo user_id.txt
+        inicio = System.nanoTime();
         consultar(base);
+        double tempoConsultas = (System.nanoTime() - inicio) / 1000000.0;
+
+        System.out.println();
+        System.out.println("=== Tempos (ms) ===");
+        System.out.println("Leitura e indexacao:    " + arredondar(tempoLeitura, 2));
+        System.out.println("Calculo do melhor livro: " + arredondar(tempoMelhorLivro, 2));
+        System.out.println("Ordenacao (quicksort):   " + arredondar(tempoOrdenacao, 2));
+        System.out.println("Gravacao dos arquivos:   " + arredondar(tempoGravacao, 2));
+        System.out.println("Consultas:               " + arredondar(tempoConsultas, 2));
     }
 
     // Método para mostrar o resumo da leitura (RF4)
@@ -37,14 +67,40 @@ public class Principal {
         System.out.println("Livros distintos:         " + base.tabelaTitulos.quantidade);
     }
 
-    // Método para gravar a lista de usuários na ordem em que apareceram
-    static void gravarUsuarios(BaseAvaliacoes base, String caminho) throws IOException {
+    // Método para escolher os 10 livros de maior média com pelo menos 100 avaliações (seleção)
+    static int[] calcularRanking(BaseAvaliacoes base) {
+        int[] ranking = new int[10];
+        int minimoAvaliacoes = 100; // RF7: só livros com N >= 100
+        int quantidadeLivros = base.tabelaTitulos.quantidade;
+        int[] escolhido = new int[quantidadeLivros];
+        for (int posicao = 0; posicao < 10; posicao++) {
+            int melhor = -1;
+            for (int i = 0; i < quantidadeLivros; i++) {
+                if (escolhido[i] == 0 && base.quantidadeAvaliacoes[i] >= minimoAvaliacoes) {
+                    if (melhor == -1 || base.compararLivros(i, melhor) > 0) {
+                        melhor = i;
+                    }
+                }
+            }
+            ranking[posicao] = melhor;
+            if (melhor != -1) {
+                escolhido[melhor] = 1;
+            }
+        }
+        return ranking;
+    }
+
+    // Método para gravar a lista de usuários; sem vetor de ordem, grava na ordem em que apareceram
+    static void gravarUsuarios(BaseAvaliacoes base, int[] ordem, String caminho) throws IOException {
         EscritorSaida saida = new EscritorSaida(caminho);
         saida.texto("User_id,profileName,Title,media_livro,N_livro,nota_usuario");
         saida.fimLinha();
         int quantidadeUsuarios = base.tabelaUsuarios.quantidade;
         for (int i = 0; i < quantidadeUsuarios; i++) {
             int usuario = i;
+            if (ordem != null) {
+                usuario = ordem[i];
+            }
             int livro = base.melhorLivro[usuario];
             saida.campo(base.usuarioChave[usuario], base.usuarioTamanho[usuario]);
             saida.caractere(',');
@@ -60,6 +116,42 @@ public class Principal {
             saida.fimLinha();
         }
         saida.fechar();
+    }
+
+    // Método para gravar o ranking dos 10 livros (RF7)
+    static void gravarRanking(BaseAvaliacoes base, int[] ranking) throws IOException {
+        EscritorSaida saida = new EscritorSaida("ranking_top10_livros.csv");
+        saida.texto("posicao,Title,media_livro,N_livro");
+        saida.fimLinha();
+        for (int posicao = 0; posicao < 10; posicao++) {
+            int livro = ranking[posicao];
+            if (livro != -1) {
+                saida.inteiro(posicao + 1);
+                saida.caractere(',');
+                saida.campo(base.tituloChave[livro], base.tituloTamanho[livro]);
+                saida.caractere(',');
+                saida.media(base.somaDecimos[livro], base.quantidadeAvaliacoes[livro]);
+                saida.caractere(',');
+                saida.inteiro(base.quantidadeAvaliacoes[livro]);
+                saida.fimLinha();
+            }
+        }
+        saida.fechar();
+    }
+
+    // Método para mostrar o ranking na tela
+    static void mostrarRanking(BaseAvaliacoes base, int[] ranking) {
+        System.out.println();
+        System.out.println("=== Top 10 livros (N >= 100) ===");
+        for (int posicao = 0; posicao < 10; posicao++) {
+            int livro = ranking[posicao];
+            if (livro != -1) {
+                System.out.print((posicao + 1) + ". ");
+                imprimir(base.tituloChave[livro], base.tituloTamanho[livro]);
+                System.out.println(" | media " + arredondar(base.somaDecimos[livro] / (10.0 * base.quantidadeAvaliacoes[livro]), 4)
+                        + " | N " + base.quantidadeAvaliacoes[livro]);
+            }
+        }
     }
 
     // Método para ler o user_id.txt (um User_id por linha) e mostrar o nome e o melhor livro (RF6)

@@ -179,6 +179,28 @@ public class BaseAvaliacoes {
         return 0;
     }
 
+    // Método para comparar dois usuários na lista ordenada: negativo se o usuarioA vem antes
+    // Regra: maior média do melhor livro; empate, maior N; empate, User_id em ordem alfabética
+    int compararUsuarios(int usuarioA, int usuarioB) {
+        int livroA = melhorLivro[usuarioA];
+        int livroB = melhorLivro[usuarioB];
+        double produtoA = (double) somaDecimos[livroA] * quantidadeAvaliacoes[livroB];
+        double produtoB = (double) somaDecimos[livroB] * quantidadeAvaliacoes[livroA];
+        if (produtoA > produtoB) {
+            return -1;
+        }
+        if (produtoA < produtoB) {
+            return 1;
+        }
+        if (quantidadeAvaliacoes[livroA] > quantidadeAvaliacoes[livroB]) {
+            return -1;
+        }
+        if (quantidadeAvaliacoes[livroA] < quantidadeAvaliacoes[livroB]) {
+            return 1;
+        }
+        return compararTexto(usuarioChave[usuarioA], usuarioTamanho[usuarioA], usuarioChave[usuarioB], usuarioTamanho[usuarioB]);
+    }
+
     // Método para comparar dois textos em ordem alfabética: negativo se o textoA vem antes
     static int compararTexto(char[] textoA, int tamanhoA, char[] textoB, int tamanhoB) {
         int menor = tamanhoA;
