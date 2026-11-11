@@ -14,3 +14,21 @@ Precisa só do JDK (testado com o Java 21). Na pasta do repositório:
 ```
 javac -encoding UTF-8 -d classes *.java
 ```
+
+## Como executar
+
+O programa lê e grava na **pasta em que é executado**. Coloque nela o `Books_rating.csv` (base do Kaggle,
+*Amazon Books Reviews*) e o `user_id.txt` (um `User_id` por linha; há um exemplo neste repositório). Depois:
+
+```
+java -cp <caminho do repositório>/classes Principal
+```
+
+Arquivos gerados:
+
+| Arquivo | Conteúdo |
+|---|---|
+| `usuario_melhor_livro.csv` | um usuário por linha: `User_id, profileName, Title, media_livro, N_livro, nota_usuario` |
+
+Na tela aparecem o resumo da leitura (linhas válidas e descartadas) e as consultas do
+`user_id.txt`.

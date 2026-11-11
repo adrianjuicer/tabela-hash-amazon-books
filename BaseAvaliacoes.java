@@ -1,6 +1,6 @@
 import java.io.IOException;
 
-// Guarda os livros e os usuários da base em duas tabelas hash
+// Guarda os livros, os usuários e cada avaliação válida, e decide o melhor livro de cada usuário
 public class BaseAvaliacoes {
     TabelaHash tabelaTitulos;
     TabelaHash tabelaUsuarios;
@@ -17,11 +17,19 @@ public class BaseAvaliacoes {
     int[] usuarioTamanho;
     char[][] usuarioNome;
     int[] usuarioNomeTamanho;
+    int[] melhorLivro;          // índice do melhor livro do usuário
+    int[] notaUsuario;          // maior nota que o usuário deu ao melhor livro, em décimos
     int capacidadeUsuarios;
+
+    // Avaliações válidas: usuário, livro e nota de cada linha
+    int[] parUsuario;
+    int[] parLivro;
+    int[] parNota;
+    int quantidadePares;
+    int capacidadePares;
 
     // Contadores da leitura (RF4)
     int registrosLidos;
-    int quantidadePares;        // avaliações válidas
     int descartadosSemUsuario;
     int descartadosSemTitulo;
     int descartadosNotaInvalida;
@@ -41,6 +49,12 @@ public class BaseAvaliacoes {
         this.usuarioTamanho = new int[capacidadeUsuarios];
         this.usuarioNome = new char[capacidadeUsuarios][];
         this.usuarioNomeTamanho = new int[capacidadeUsuarios];
+        this.melhorLivro = new int[capacidadeUsuarios];
+        this.notaUsuario = new int[capacidadeUsuarios];
+        this.capacidadePares = 3100000;
+        this.parUsuario = new int[capacidadePares];
+        this.parLivro = new int[capacidadePares];
+        this.parNota = new int[capacidadePares];
         this.quantidadePares = 0;
         this.registrosLidos = 0;
         this.descartadosSemUsuario = 0;
@@ -48,7 +62,7 @@ public class BaseAvaliacoes {
         this.descartadosNotaInvalida = 0;
     }
 
-    // Método para ler o arquivo inteiro e indexar livros e usuários
+    // Método para ler o arquivo inteiro e indexar livros, usuários e avaliações
     void carregar(String caminho) throws IOException {
         LeitorCsv leitor = new LeitorCsv(caminho);
         while (leitor.lerRegistro() == 1) {
@@ -63,7 +77,7 @@ public class BaseAvaliacoes {
             } else {
                 int livro = registrarLivro(leitor.titulo, leitor.tamanhoTitulo, nota);
                 int usuario = registrarUsuario(leitor);
-                quantidadePares++;
+                registrarPar(usuario, livro, nota);
             }
         }
         leitor.fechar();
@@ -97,6 +111,8 @@ public class BaseAvaliacoes {
             usuarioTamanho[usuario] = leitor.tamanhoUsuario;
             usuarioNome[usuario] = null;
             usuarioNomeTamanho[usuario] = 0;
+            melhorLivro[usuario] = -1;
+            notaUsuario[usuario] = 0;
         }
         if (usuarioNomeTamanho[usuario] == 0 && leitor.tamanhoNome > 0) {
             char[] nome = new char[leitor.tamanhoNome];
@@ -107,6 +123,74 @@ public class BaseAvaliacoes {
             usuarioNomeTamanho[usuario] = leitor.tamanhoNome;
         }
         return usuario;
+    }
+
+    // Método para guardar a avaliação; o melhor livro só pode ser decidido depois da leitura
+    void registrarPar(int usuario, int livro, int nota) {
+        if (quantidadePares == capacidadePares) {
+            aumentarPares();
+        }
+        parUsuario[quantidadePares] = usuario;
+        parLivro[quantidadePares] = livro;
+        parNota[quantidadePares] = nota;
+        quantidadePares++;
+    }
+
+    // Método para escolher o melhor livro de cada usuário passando uma vez pelas avaliações
+    void calcularMelhoresLivros() {
+        for (int i = 0; i < quantidadePares; i++) {
+            int usuario = parUsuario[i];
+            int livro = parLivro[i];
+            int nota = parNota[i];
+            if (melhorLivro[usuario] == -1 || compararLivros(livro, melhorLivro[usuario]) > 0) {
+                melhorLivro[usuario] = livro;
+                notaUsuario[usuario] = nota;
+            } else if (livro == melhorLivro[usuario] && nota > notaUsuario[usuario]) {
+                notaUsuario[usuario] = nota; // avaliou o mesmo livro de novo: vale a maior nota
+            }
+        }
+    }
+
+    // Método para comparar dois livros: 1 se o livroA é melhor, -1 se é pior, 0 se é o mesmo
+    // Regra: maior média; empate, maior N; empate, título em ordem alfabética
+    int compararLivros(int livroA, int livroB) {
+        // somaA / NA > somaB / NB é o mesmo que somaA * NB > somaB * NA (sem divisão)
+        double produtoA = (double) somaDecimos[livroA] * quantidadeAvaliacoes[livroB];
+        double produtoB = (double) somaDecimos[livroB] * quantidadeAvaliacoes[livroA];
+        if (produtoA > produtoB) {
+            return 1;
+        }
+        if (produtoA < produtoB) {
+            return -1;
+        }
+        if (quantidadeAvaliacoes[livroA] > quantidadeAvaliacoes[livroB]) {
+            return 1;
+        }
+        if (quantidadeAvaliacoes[livroA] < quantidadeAvaliacoes[livroB]) {
+            return -1;
+        }
+        int ordem = compararTexto(tituloChave[livroA], tituloTamanho[livroA], tituloChave[livroB], tituloTamanho[livroB]);
+        if (ordem < 0) {
+            return 1;
+        }
+        if (ordem > 0) {
+            return -1;
+        }
+        return 0;
+    }
+
+    // Método para comparar dois textos em ordem alfabética: negativo se o textoA vem antes
+    static int compararTexto(char[] textoA, int tamanhoA, char[] textoB, int tamanhoB) {
+        int menor = tamanhoA;
+        if (tamanhoB < menor) {
+            menor = tamanhoB;
+        }
+        for (int i = 0; i < menor; i++) {
+            if (textoA[i] != textoB[i]) {
+                return textoA[i] - textoB[i];
+            }
+        }
+        return tamanhoA - tamanhoB; // o mais curto vem antes
     }
 
     // Método para dobrar os vetores de livros quando enchem
@@ -136,16 +220,39 @@ public class BaseAvaliacoes {
         int[] novoTamanho = new int[novaCapacidade];
         char[][] novoNome = new char[novaCapacidade][];
         int[] novoNomeTamanho = new int[novaCapacidade];
+        int[] novoMelhor = new int[novaCapacidade];
+        int[] novaNota = new int[novaCapacidade];
         for (int i = 0; i < capacidadeUsuarios; i++) {
             novoChave[i] = usuarioChave[i];
             novoTamanho[i] = usuarioTamanho[i];
             novoNome[i] = usuarioNome[i];
             novoNomeTamanho[i] = usuarioNomeTamanho[i];
+            novoMelhor[i] = melhorLivro[i];
+            novaNota[i] = notaUsuario[i];
         }
         usuarioChave = novoChave;
         usuarioTamanho = novoTamanho;
         usuarioNome = novoNome;
         usuarioNomeTamanho = novoNomeTamanho;
+        melhorLivro = novoMelhor;
+        notaUsuario = novaNota;
         capacidadeUsuarios = novaCapacidade;
+    }
+
+    // Método para dobrar os vetores de avaliações quando enchem
+    void aumentarPares() {
+        int novaCapacidade = capacidadePares * 2;
+        int[] novoUsuario = new int[novaCapacidade];
+        int[] novoLivro = new int[novaCapacidade];
+        int[] novaNota = new int[novaCapacidade];
+        for (int i = 0; i < capacidadePares; i++) {
+            novoUsuario[i] = parUsuario[i];
+            novoLivro[i] = parLivro[i];
+            novaNota[i] = parNota[i];
+        }
+        parUsuario = novoUsuario;
+        parLivro = novoLivro;
+        parNota = novaNota;
+        capacidadePares = novaCapacidade;
     }
 }

@@ -13,6 +13,6 @@ public class FuncoesHash {
 
     // Método para transformar o valor hash em uma posição válida do vetor
     static int posicao(int h, int capacidade) {
-        return h % capacidade;
+        return (h & 0x7FFFFFFF) % capacidade; // a máscara zera o bit de sinal
     }
 }
